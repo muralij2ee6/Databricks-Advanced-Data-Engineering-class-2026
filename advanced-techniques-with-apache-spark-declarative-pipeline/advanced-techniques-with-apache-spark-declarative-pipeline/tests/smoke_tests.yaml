@@ -1,0 +1,97 @@
+# Smoke tests — Advanced Techniques With Apache Spark Declarative Pipeline
+#
+# Purpose: verify that the course skill FIRES for questions this course actually
+# teaches, and does NOT fire for questions that merely sound adjacent. Over-firing
+# is as much a failure as under-firing: an adjacent trigger means the TA answers
+# out-of-scope material with course authority it does not have.
+#
+# depth values:
+#   explicit  - names the course, a notebook, or a course-unique artifact
+#   scenario  - describes a situation the course demos resolve, without naming it
+#   domain    - general Spark Declarative Pipelines topic inside course scope
+#   adjacent  - near-neighbour topic that is OUT of scope (must NOT trigger)
+#
+# expect values: trigger | no-trigger
+# Scope boundary of record: course_pack.md "Scope" + links.md Section B.
+
+advanced-techniques-with-apache-spark-declarative-pipeline:
+
+  # ---------------------------------------------------------------- explicit
+  - depth: explicit
+    prompt: "In the Advanced Techniques With Apache Spark Declarative Pipelines course, which demo shows three flows writing into one bronze streaming table?"
+    expect: trigger
+    note: "Names the course and a course-unique artifact (Module 2 multi-flow demo, Bright Home / Lumina Sports / Northstar Outfitters). Must route to course_pack.md."
+
+  - depth: explicit
+    prompt: "The classroom setup notebook fails when it tries to create my catalog. What is the catalog_forced argument for?"
+    expect: trigger
+    note: "Course-unique setup artifact (build_user_catalog_name in Includes/Classroom-Setup-*). Answer is in faq.md Section 2 / Course facts; flagged PERISHABLE."
+
+  # ---------------------------------------------------------------- scenario
+  - depth: scenario
+    prompt: "I renamed one of my append flows to something clearer, re-ran the pipeline, and now my target table has duplicate rows. What happened?"
+    expect: trigger
+    note: "Checkpoint-keyed-by-flow-name behaviour, Module 1/2. Must trigger and respond as a hint ladder (JUDGMENT), not a paste."
+
+  - depth: scenario
+    prompt: "My expectation is written as EXPECT (quantity > 0) and it is silently throwing away rows that look fine to me."
+    expect: trigger
+    note: "Three-valued-logic NULL misconception, Module 7/8. Highest-frequency course-derived question."
+
+  - depth: scenario
+    prompt: "One landing folder is getting events for store ops, marketing and logistics all mixed together with different schemas. How should I structure ingestion?"
+    expect: trigger
+    note: "Multiplex ingest-once-fan-out-by-type pattern plus VARIANT bronze, Modules 3-4."
+
+  # ---------------------------------------------------------------- domain
+  - depth: domain
+    prompt: "What is the difference between SCD Type 1 and SCD Type 2 when using AUTO CDC INTO, and which columns does Type 2 add?"
+    expect: trigger
+    note: "Modules 5-6, including __START_AT / __END_AT. Core course content."
+
+  - depth: domain
+    prompt: "How is the quarantine pattern different from just using ON VIOLATION DROP ROW?"
+    expect: trigger
+    note: "Module 8 advanced data quality. Explain the pattern and the inverse-logic principle; do not hand over the lab's inverse expressions."
+
+  - depth: domain
+    prompt: "When should I use CLUSTER BY AUTO instead of naming liquid clustering keys?"
+    expect: trigger
+    note: "Modules 1-2. Advisory answer plus links.md delta/clustering path."
+
+  # ---------------------------------------------------------------- adjacent (must NOT fire)
+  - depth: adjacent
+    prompt: "How do I schedule this pipeline to run every hour and add a task dependency and email alerts in Lakeflow Jobs?"
+    expect: no-trigger
+    note: "Orchestration and scheduling are explicitly out of scope. Correct behaviour: decline course authority, point to links.md Section B jobs/ paths. Must NOT answer as course content."
+
+  - depth: adjacent
+    prompt: "What is the right databricks.yml layout to promote this pipeline from dev to prod with Declarative Automation Bundles in a CI/CD workflow?"
+    expect: no-trigger
+    note: "CI/CD and deployment bundles are out of scope per the Summary and Next Steps notebook. Redirect only."
+
+  - depth: adjacent
+    prompt: "I want to write to this Iceberg table from Trino and Snowflake instead of reading it. How do I set up the external writer?"
+    expect: no-trigger
+    note: "Double out-of-scope: Iceberg writes from external engines, plus third-party/competitor tooling. The course teaches UniForm READ exposure only. Must refuse the competitor-tooling portion outright."
+
+  - depth: adjacent
+    prompt: "Can you walk me through writeStream with foreachBatch and a custom checkpointLocation in a plain Structured Streaming notebook, outside any pipeline?"
+    expect: no-trigger
+    note: "Structured Streaming APIs outside Spark Declarative Pipelines are out of scope. Course covers pipeline-managed checkpoints only."
+
+  - depth: adjacent
+    prompt: "What serverless SKU and DBU budget should I size for this workload, and how do I forecast monthly cost?"
+    expect: no-trigger
+    note: "Cost and capacity tuning are out of scope; pricing is also PERISHABLE and must never be quoted. General cost-hygiene advice from best_practices.md is allowed, but a sizing answer is not."
+
+# ---------------------------------------------------------------------------
+# Pass criteria
+#   - every trigger case returns a course-grounded answer citing course_pack.md,
+#     faq.md, misconceptions.md or best_practices.md
+#   - every no-trigger case declines course authority and redirects via
+#     links.md Section B without fabricating course content
+#   - no case returns a go/... link, a deck, Confluence, a roadmap claim, or a
+#     competitor source
+#   - no case pastes a Module 9 graded-lab solution
+# ---------------------------------------------------------------------------

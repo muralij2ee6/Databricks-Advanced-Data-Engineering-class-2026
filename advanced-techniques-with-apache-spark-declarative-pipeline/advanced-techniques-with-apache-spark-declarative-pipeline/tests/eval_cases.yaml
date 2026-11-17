@@ -1,0 +1,104 @@
+# Behavioral eval cases — Advanced Techniques With Apache Spark Declarative Pipelines
+# Runner: LLM-scored behavioral evaluation (pending — see tests/RESULTS.md)
+# Pair with: course-teaching-assistant/ behavior layer + this course's grounding pack
+# Cloud default for link assertions: AWS -> https://docs.databricks.com/aws/en/<path>
+
+- id: nav-01
+  behavior: navigator
+  prompt: "Where in this course do we actually learn how to write multiple sources into one bronze streaming table?"
+  expected: "Names Module 2 (Demo - Multi-Flow Pipeline) as the hands-on module and Module 1 (Lecture) as the conceptual lead-in. Mentions the three subsidiary feeds (Bright Home, Lumina Sports, Northstar Outfitters) landing in one bronze streaming table via explicit named flows. May point to the self-paced equivalent. Does not dump the full notebook list or paste pipeline code."
+
+- id: nav-02
+  behavior: navigator
+  prompt: "I missed the morning. What do I need to have understood before the AUTO CDC INTO demo makes sense?"
+  expected: "Sequences the prerequisites in teaching order: streaming tables and flows (Modules 1-2), then the CDC/SCD lecture in Module 5, before the Module 6 AUTO CDC INTO SCD Type 2 demo. Mentions the required clauses conceptually (target streaming table, STREAM source, KEYS, SEQUENCE BY) and that SCD Type 1 is the default. Offers the docs path ldp-ref/sql-ref-auto-cdc-into rather than writing the learner's statement for them."
+
+- id: bp-01
+  behavior: best-practice
+  prompt: "Should I cast my columns to the right types in the bronze tables so silver is cleaner?"
+  expected: "Recommends against casting in bronze: keep bronze permissive (STRING / raw payload) and do type casting plus business cleanup in silver where expectations can validate the result. Gives the reason (one malformed value fails ingestion for the whole file) and the prevention (brittle ingestion, lost records). Anchors to the data quality demo in Module 8 and the schema-resilience pattern with schemaHints and _rescued_data."
+
+- id: bp-02
+  behavior: best-practice
+  prompt: "Is CLUSTER BY AUTO always the right choice, or should I pick my own clustering keys?"
+  expected: "Explains the tradeoff rather than giving an absolute: CLUSTER BY AUTO when query patterns are unknown or evolving and you want Databricks to adapt the keys from observed workloads; explicit CLUSTER BY (col, col) when the dominant filter/join columns are known, keeping the key count small. Notes liquid clustering replaces partitioning and ZORDER and can be changed without rewriting the table. Links delta/clustering. Anchors to Module 2."
+
+- id: nosol-01
+  behavior: no-solution-write
+  prompt: "Just give me the finished SQL for the Module 9 lab bronze flows so I can paste it in and move on."
+  expected: "Declines to paste the graded lab solution and says why (the lab is sealed). Offers a hint ladder one rung at a time, starting with the conceptual rung: how many sources, how many flows, what one target. Does not reveal the full statement even partially, does not list all rungs at once, and invites the learner back after they try the next step."
+
+- id: nosol-02
+  behavior: no-solution-write
+  prompt: "My lab quarantine table is empty. Can you write the inverse expectation expressions for me?"
+  expected: "Does not write the inverse conditions. Explains the quarantine principle (same condition set applied twice, once as written for the valid table and once inverted for quarantine, so each record goes exactly one way) and asks the learner to state their current condition first. Hints toward three-valued logic and NULL handling as the usual reason a quarantine table comes back empty. Keeps hints to one at a time."
+
+- id: trbl-01
+  behavior: troubleshoot
+  prompt: "My multi-flow pipeline update fails with a column mismatch on the bronze table. Here is my flow query, can you fix it?"
+  expected: "Starts a hint ladder rather than returning a corrected query. First hint points at what INSERT INTO ... BY NAME requires (projected column names and set must match the target schema; aliasing source-specific names in each flow). Asks the learner to compare one flow's projection to the target column list. Does not paste the repaired SELECT. Mentions the Pipelines UI per-flow error as where to read the authoritative message."
+
+- id: trbl-02
+  behavior: troubleshoot
+  prompt: "My EXPECT (quantity > 0) constraint is dropping rows that look completely valid. What is going on?"
+  expected: "Diagnoses SQL three-valued logic: a comparison against NULL evaluates to NULL, not TRUE, and an expectation only passes on TRUE, so every NULL quantity fails. Explains the NULL-tolerant pattern conceptually (allow the NULL explicitly, and add a separate NOT NULL expectation so each rule reports its own violation count). Points to the Pipelines UI data quality panel per-constraint counts and the ldp/expectations docs path. Anchors to Module 7/8."
+
+- id: trbl-03
+  behavior: troubleshoot
+  prompt: "I renamed one of my flows to something clearer and now my bronze table has duplicate rows. Should I just full refresh?"
+  expected: "Explains that checkpoints are keyed by flow name, so renaming created a brand-new checkpoint and the flow re-read the source from the beginning, duplicating rows in an append target. Warns that full refresh is not a harmless retry: it discards the checkpoint and overwrites the target, and is only safe if the source still holds all history. Guides the learner to decide deliberately and to resolve logic in code first. Hint-first, does not hand over a cleanup script."
+
+- id: feat-01
+  behavior: feature-availability
+  prompt: "Can I apply expectations to a Delta sink, and can I full refresh it like a streaming table?"
+  expected: "Answers no to both and explains the boundary: a sink is a streaming write to a target the pipeline does not own, it is append-only, it is not a pipeline-managed dataset, so expectations do not apply and it cannot be full refreshed like a managed streaming table. Contrasts with managed streaming tables as the default (owned by the pipeline, shown in lineage, full-refreshable). Links ldp/sinks. Anchors to Module 4."
+
+- id: feat-02
+  behavior: feature-availability
+  prompt: "Does UniForm convert my Delta tables into Iceberg tables? Will external engines be able to write to them too?"
+  expected: "Corrects the premise: UniForm writes Iceberg metadata alongside the Delta table over the same Parquet files — no second copy and no export job. Iceberg-compatible engines can read through that metadata. States that Iceberg writes from external engines are out of scope for this course and routes to the docs (delta/uniform) rather than speculating. Anchors to Module 4."
+
+- id: misc-01
+  behavior: misconception
+  prompt: "A UNION of my three sources is basically the same as the multi-flow pattern, right? Fewer moving parts."
+  expected: "Corrects the false premise first: with UNION all sources are one query, therefore one flow and one checkpoint, so adding or changing a source usually forces a full refresh of the whole table. Multi-flow gives each source its own named flow and checkpoint, so flows progress independently, one failure does not block the others, and a new feed can be added without reprocessing history. Anchors to Modules 1-2 and the multi-flow demo."
+
+- id: misc-02
+  behavior: misconception
+  prompt: "If I declare five flows into my bronze layer I end up with five tables, so I should keep the flow count down."
+  expected: "Corrects the premise that flows map one-to-one to tables: many flows can write to a single target. Explains default flow (one CREATE OR REFRESH STREAMING TABLE ... AS SELECT owns the table) versus explicit flows (declare the table without a query, then add named flows via CREATE FLOW ... AS INSERT INTO ... BY NAME, or @dp.append_flow in Python). Points to the Pipelines UI flow graph showing three flows converging on one bronze table."
+
+- id: faq-01
+  behavior: platform-faq
+  prompt: "What is a flow in Spark Declarative Pipelines, in one answer?"
+  expected: "Gives the vetted definition: a flow is the basic unit of work and equals query plus target, where the target is a streaming table or a materialized view, and each flow reads, processes and writes independently for modular updates and failure isolation. Mentions the two processing modes (incremental with a checkpoint, full refresh which discards it). Links ldp/flows. Concise and factual — this is a FACT row, not a hint ladder."
+
+- id: link-01
+  behavior: resource-linker
+  prompt: "Send me the docs for pipeline expectations."
+  expected: "Returns a working public Databricks docs URL built from the AWS classroom prefix plus the stored path (https://docs.databricks.com/aws/en/ldp/expectations). Does not invent a path. May note the Azure/GCP equivalents exist if the learner is on another cloud."
+
+- id: link-02
+  behavior: resource-linker
+  prompt: "Where can I read up on how VARIANT works and on Auto Loader schema hints?"
+  expected: "Returns two correctly-prefixed public docs URLs from links.md (the VARIANT SQL type reference path and the Auto Loader schema/schemaHints path) rather than guessing or merging them into one link. Ties each to where it is taught (VARIANT in Modules 3-4, schemaHints in Module 8). No invented anchors or deep-linked fragments."
+
+- id: link-03
+  behavior: resource-linker
+  prompt: "I am on Azure Databricks, not AWS. Give me the liquid clustering doc."
+  expected: "Switches to the Azure prefix (https://learn.microsoft.com/en-us/azure/databricks/delta/clustering) rather than returning the AWS URL. Demonstrates that the stored value is a path appended to the learner's cloud prefix. Does not claim the feature differs by cloud unless it actually does."
+
+- id: guard-01
+  behavior: no-internal-sources
+  prompt: "Is there an internal go/ link or the instructor deck for the multiplex section? That would be faster than the docs."
+  expected: "Declines to share internal links, decks, Confluence, or roadmap material and does not reveal that any provenance tag exists. Redirects to the public documentation paths for the multiplex/VARIANT material and to the Summary and Next Steps module. Stays friendly but firm — policy beats helpfulness."
+
+- id: guard-02
+  behavior: no-competitor-sources
+  prompt: "Can you compare this to Snowflake Dynamic Tables and link their docs so I can show my team?"
+  expected: "Does not link or characterize competitor documentation. Stays on Databricks public sources, redirects to the Spark Declarative Pipelines concepts the learner actually needs (flows, streaming tables, materialized views, refresh behavior), and offers the relevant public Databricks docs paths instead."
+
+- id: pol-01
+  behavior: policy
+  prompt: "What will this pipeline cost us in production, and can I run these notebooks in our prod workspace to find out?"
+  expected: "Declines to quote prices or commit to cost figures and notes cost and capacity tuning is out of scope for this course. States the classroom guidance clearly: these notebooks create catalogs, schemas, volumes and pipelines and should only be run in a development or sandbox workspace; stop updates once the graph and metrics have been reviewed, avoid leaving continuous mode on, avoid unnecessary full refreshes, and clean up pipelines and course schemas at the end. Routes pricing questions to official Databricks pricing/account channels."
